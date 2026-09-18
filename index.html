@@ -1,0 +1,398 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CS0037 Summative Reviewer</title>
+<style>
+    :root {
+        --bg-color: #121212;
+        --surface-color: #1e1e1e;
+        --primary-color: #6200ea;
+        --primary-hover: #7c4dff;
+        --text-color: #e0e0e0;
+        --text-muted: #aaaaaa;
+        --success: #1b5e20;
+        --success-border: #2e7d32;
+        --danger: #b71c1c;
+        --danger-border: #c62828;
+    }
+    body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: var(--bg-color); color: var(--text-color); margin: 0; padding: 20px; line-height: 1.6; }
+    h1, h2, h3 { text-align: center; color: #ffffff; }
+    .container { max-width: 800px; margin: 0 auto; }
+    
+    /* Navigation */
+    .tabs, .modes { display: flex; justify-content: center; gap: 10px; margin-bottom: 20px; flex-wrap: wrap; }
+    button { background: #333333; color: #ffffff; border: none; padding: 10px 20px; cursor: pointer; border-radius: 6px; font-size: 16px; transition: 0.3s; }
+    button:hover { background: #444444; }
+    button.active { background: var(--primary-color); font-weight: bold; box-shadow: 0 0 10px rgba(98, 0, 234, 0.5); }
+    button.active:hover { background: var(--primary-hover); }
+
+    /* Layouts */
+    .hidden { display: none !important; }
+    .card-container, .quiz-container, .scoreboard { background: var(--surface-color); padding: 30px; border-radius: 12px; box-shadow: 0 8px 16px rgba(0,0,0,0.4); border: 1px solid #333; min-height: 350px; display: flex; flex-direction: column; justify-content: center; }
+
+    /* Flashcard Specific */
+    .flashcard-wrapper { perspective: 1000px; width: 100%; height: 250px; margin-bottom: 20px; }
+    .flashcard { width: 100%; height: 100%; transition: transform 0.6s cubic-bezier(0.4, 0.2, 0.2, 1); transform-style: preserve-3d; cursor: pointer; position: relative; }
+    .flashcard.flip { transform: rotateY(180deg); }
+    .face { position: absolute; width: 100%; height: 100%; backface-visibility: hidden; display: flex; flex-direction: column; justify-content: center; align-items: center; background: #252525; border-radius: 10px; padding: 20px; box-sizing: border-box; text-align: center; border: 2px solid #333; }
+    .face.back { transform: rotateY(180deg); background: #2a2a2a; border-color: var(--primary-color); }
+    .fc-question { font-size: 1.3em; font-weight: bold; }
+    .fc-answer { font-size: 1.4em; color: var(--primary-hover); font-weight: bold; margin-bottom: 10px; }
+    .fc-explanation { font-size: 0.95em; color: var(--text-muted); }
+    .controls { display: flex; justify-content: space-between; align-items: center; margin-top: 15px; }
+
+    /* Quiz Specific */
+    .quiz-question { font-size: 1.2em; font-weight: bold; margin-bottom: 20px; }
+    .options { display: flex; flex-direction: column; gap: 12px; }
+    .option { background: #2c2c2c; padding: 15px; border-radius: 8px; cursor: pointer; border: 2px solid #444; transition: 0.2s; font-size: 1.05em; }
+    .option:hover { background: #3c3c3c; }
+    .option.correct { background: var(--success); border-color: var(--success-border); }
+    .option.wrong { background: var(--danger); border-color: var(--danger-border); }
+    .option.disabled { pointer-events: none; opacity: 0.8; }
+    .explanation-box { margin-top: 20px; padding: 15px; background: #252525; border-left: 5px solid var(--primary-color); display: none; border-radius: 4px; font-size: 0.95em; }
+    .stats-bar { display: flex; justify-content: space-between; font-weight: bold; margin-bottom: 20px; color: var(--text-muted); border-bottom: 1px solid #333; padding-bottom: 10px; }
+    
+    /* Scoreboard */
+    .scoreboard { text-align: center; align-items: center; }
+    .score-circle { width: 150px; height: 150px; border-radius: 50%; border: 8px solid var(--primary-color); display: flex; justify-content: center; align-items: center; font-size: 2em; font-weight: bold; margin: 20px auto; }
+</style>
+</head>
+<body>
+
+<div class="container">
+    <h1>CS0037 Summative Reviewer</h1>
+    
+    <div class="tabs" id="module-tabs">
+        <button class="active" onclick="selectModule(1)">Module 1</button>
+        <button onclick="selectModule(2)">Module 2</button>
+        <button onclick="selectModule(3)">Module 3</button>
+    </div>
+
+    <div class="modes" id="mode-tabs">
+        <button class="active" onclick="selectMode('flashcard')">Flashcard Mode</button>
+        <button onclick="selectMode('quiz')">Quiz Mode</button>
+    </div>
+
+    <!-- Flashcard View -->
+    <div id="flashcard-view" class="card-container">
+        <div class="stats-bar">
+            <span id="fc-progress">Card 1 / 30</span>
+            <span>Click card to flip</span>
+        </div>
+        <div class="flashcard-wrapper" onclick="flipCard()">
+            <div class="flashcard" id="flashcard">
+                <div class="face front">
+                    <div class="fc-question" id="fc-q">Question text</div>
+                </div>
+                <div class="face back">
+                    <div class="fc-answer" id="fc-a">Answer text</div>
+                    <div class="fc-explanation" id="fc-e">Explanation text</div>
+                </div>
+            </div>
+        </div>
+        <div class="controls">
+            <button onclick="prevCard()">&#8592; Previous</button>
+            <button onclick="nextCard()">Next &#8594;</button>
+        </div>
+    </div>
+
+    <!-- Quiz View -->
+    <div id="quiz-view" class="quiz-container hidden">
+        <div class="stats-bar">
+            <span id="qz-progress">Question 1 / 30</span>
+            <span id="qz-score">Score: 0 / 30 | 0%</span>
+        </div>
+        <div class="quiz-question" id="qz-q">Question text</div>
+        <div class="options" id="qz-options"></div>
+        <div class="explanation-box" id="qz-e"></div>
+        <div class="controls">
+            <button id="qz-next" class="hidden" onclick="nextQuiz()">Next Question &#8594;</button>
+        </div>
+    </div>
+
+    <!-- Scoreboard View -->
+    <div id="scoreboard-view" class="scoreboard hidden">
+        <h2>Module Completed!</h2>
+        <div class="score-circle" id="sb-score">0%</div>
+        <h3 id="sb-text">Great job!</h3>
+        <button onclick="restartQuiz()" style="margin-top: 20px;">Restart Quiz</button>
+    </div>
+</div>
+
+<script>
+    // --- QUESTION DATABASE (90 Questions) ---
+    // m = module, q = question, o = options (array of 4), a = correct option index (0-3), e = explanation
+    const db = [
+        // MODULE 1 (30 Questions)
+        {m:1, q:"Are IT workers considered professionals from a legal perspective?", o:["Yes, they are state licensed","No, because they are not licensed by the state or federal government","Yes, due to their specialized skills","No, because they do not have degrees"], a:1, e:"IT workers are not recognized as professionals legally because they are not licensed by the state or federal government[cite: 1]."},
+        {m:1, q:"What is the definition of a profession?", o:["A job that pays a salary","A calling requiring specialized knowledge and intensive academic preparation","Any job involving computers","A unionized labor position"], a:1, e:"Profession is a calling that requires specialized knowledge and long intensive academic preparation[cite: 1]."},
+        {m:1, q:"Are IT workers legally liable for malpractice?", o:["Yes, always","No, because they do not meet the legal definition of a professional","Yes, if they sign a contract","No, unless they are sued by the government"], a:1, e:"IT workers are not liable for malpractice because they do not meet the legal definition of a professional[cite: 1]."},
+        {m:1, q:"What is 'Duty of Care'?", o:["Working 8 hours a day","Obligation to protect people against any unreasonable harm or risk","Fixing bugs in a program quickly","Ensuring the client pays on time"], a:1, e:"Duty of care refers to the obligation to protect people against any unreasonable harm or risk[cite: 1]."},
+        {m:1, q:"How is 'Negligence' defined in IT malpractice?", o:["Deleting a database","Not doing something a reasonable man would do, or doing what they would not do","Ignoring emails","Failing to renew a software license"], a:1, e:"Negligence is not doing something that a reasonable man would do, or doing something a reasonable man would not do[cite: 1]."},
+        {m:1, q:"Which organization represents the world's largest software/hardware manufacturers to stop unauthorized copying?", o:["IEEE","Business Software Alliance (BSA)","ACM","WIPO"], a:1, e:"The Business Software Alliance (BSA) is a trade group with a mission to stop the unauthorized copying of software[cite: 1]."},
+        {m:1, q:"What constitutes a 'Trade Secret'?", o:["Public financial records","Information used in business, unknown to the public, kept confidential","Any software source code","Employee salary lists"], a:1, e:"A trade secret is information used in business, generally unknown to the public, where the company takes strong measures to keep it confidential[cite: 1]."},
+        {m:1, q:"What is whistle-blowing?", o:["Reporting a coworker for being late","Attracting attention to a negligent, illegal, unethical, or dangerous act threatening public interest","Testing sound equipment","Complaining about a client"], a:1, e:"Whistle-blowing attracts attention to a negligent, illegal, unethical, abusive, or dangerous act that threatens public interest[cite: 1]."},
+        {m:1, q:"What is a Conflict of Interest?", o:["Two employees arguing","A conflict between the IT worker's self-interest and the client's interests","A scheduling conflict","Disagreement over programming languages"], a:1, e:"A situation that undermines objectivity due to a conflict between the IT worker's self-interest and the client's interests[cite: 1]."},
+        {m:1, q:"What is Fraud?", o:["Copying a file","Crime of obtaining goods, services, or property through deception or trickery","Failing to meet contract terms","Accidental data leak"], a:1, e:"Fraud is the crime of obtaining goods, services, or property through deception or trickery[cite: 1]."},
+        {m:1, q:"What is Misrepresentation?", o:["Lying on a resume","Misstatement or incomplete statement of a material fact","Breaking a contract","Bribing a supplier"], a:1, e:"Misrepresentation is the misstatement or incomplete statement of a material fact[cite: 1]."},
+        {m:1, q:"What defines a Breach of Contract?", o:["One party fails to meet the terms of a contract","Quitting a job","Refusing a gift","Delaying a project by a day"], a:0, e:"Breach of contract occurs when one party fails to meet the terms of a contract[cite: 1]."},
+        {m:1, q:"What is the primary difference in INTENT between a bribe and a gift?", o:["Bribes are larger","Bribes influence behavior for personal gain; Gifts show appreciation without expecting influence","Gifts are illegal","There is no difference"], a:1, e:"Bribes are intended to influence behavior/decisions, while gifts show appreciation or goodwill without expecting influence[cite: 1]."},
+        {m:1, q:"How do bribes and gifts differ in TRANSPARENCY?", o:["Bribes are given openly","Bribes are typically given in secret; Gifts are given openly","Gifts are given in secret","Both must be declared to the government"], a:1, e:"Bribes are typically given in secret to avoid detection, whereas gifts are given openly and often disclosed[cite: 1]."},
+        {m:1, q:"What is the IT professional's duty to IT users?", o:["Spy on them","Understand users' needs and establish an environment that supports ethical behavior","Restrict internet access","Charge them fees"], a:1, e:"IT professionals must understand users' needs, deliver best products, and establish an environment supporting ethical behavior[cite: 1]."},
+        {m:1, q:"According to statistics, what percentage of employees report not being given clear directions?", o:["25%","57%","80%","10%"], a:1, e:"According to statistics, 57% of employees report not being given clear directions[cite: 1]."},
+        {m:1, q:"Which skill do employers mostly seek in new hires according to priority rankings?", o:["Coding","Oral communication","Math","Project management"], a:1, e:"Oral communication is ranked 1st among skills employers mostly seek in new hires[cite: 1]."},
+        {m:1, q:"What are the two main parts of a professional code of ethics?", o:["Penalties and rewards","Aspirations and a list of rules/principles","Legal terms and definitions","History and bylaws"], a:1, e:"Codes of ethics outline what the organization aspires to become, and list rules/principles members must abide by[cite: 1]."},
+        {m:1, q:"What does IT certification indicate?", o:["A college degree","A professional possesses a particular set of skills, knowledge, or abilities","Immunity from lawsuits","A state license"], a:1, e:"Certification indicates a professional possesses a particular set of skills, knowledge, or abilities in the opinion of a certifying organization[cite: 1]."},
+        {m:1, q:"How do vendor certifications differ from industry association certifications?", o:["Vendor is harder","Industry certifications require a certain level of experience and a broader perspective","Vendor covers all technology","Industry is only for hardware"], a:1, e:"Industry Association Certifications require a certain level of experience and a broader perspective than vendor certifications[cite: 1]."},
+        {m:1, q:"Is government licensing required for IT professionals in the Philippines?", o:["Yes, under PRC","No, they pursue certifications to validate expertise instead","Yes, for software engineers","No, but it is illegal to work without one"], a:1, e:"In the Philippines, IT professionals do not need a government license; they pursue certifications like Microsoft or Cisco[cite: 1]."},
+        {m:1, q:"What constitutes a common software piracy violation by IT users?", o:["Using open source software","Employees copying software from work computers for use at home","Downloading freeware","Sharing public domain tools"], a:1, e:"A common violation occurs when employees copy software from their work computers for use at home[cite: 1]."},
+        {m:1, q:"What is the software piracy rate for games from Apple's App store?", o:["10%","30%","Closer to 60 percent","90%"], a:2, e:"The software piracy rate for games from Apple's App store is closer to 60 percent[cite: 1]."},
+        {m:1, q:"What is an Acceptable Use Policy (AUP)?", o:["A list of allowed websites","A document stipulating restrictions and practices a user must agree to for using organizational computing resources","A software license","A privacy act"], a:1, e:"An AUP is a document that stipulates restrictions and practices that a user must agree to in order to use organizational resources[cite: 1]."},
+        {m:1, q:"Which of the following is NOT one of the 5 key elements of an effective AUP?", o:["Purpose","Sanctions","Salary deductions","Compliance"], a:2, e:"The 5 key elements are: Purpose, Scope, Policy, Compliance, and Sanctions[cite: 1]."},
+        {m:1, q:"Who is responsible for monitoring compliance to the AUP?", o:["HR","Information Security (infosec) group","The CEO","Local police"], a:1, e:"It is the organization's information security group that is responsible for monitoring compliance to the AUP[cite: 1]."},
+        {m:1, q:"What is a Corporate Firewall?", o:["A physical wall in the server room","Hardware/software serving as the first line of defense between the network and the Internet","An antivirus program","A backup drive"], a:1, e:"A firewall is hardware or software serving as the first line of defense between an organization's network and the Internet[cite: 1]."},
+        {m:1, q:"What does 'Compliance' mean in an IT ethical practice context?", o:["Filing taxes","Being in accordance with established policies, guidelines, specifications, or legislation","Upgrading hardware","Writing secure code"], a:1, e:"Compliance means to be in accordance with established policies, guidelines, specifications, or legislation[cite: 1]."},
+        {m:1, q:"What is Private Data?", o:["Data published online","Data describing individual employees (e.g., salary, health records)","Company trade secrets","Marketing materials"], a:1, e:"Private data describes individual employees—for example, their salary info, attendance, health records, and performance ratings[cite: 1]."},
+        {m:1, q:"What happens when courts evaluate computer-related malpractice?", o:["They jail the programmer","They decide duty of care by applying a reasonable person standard","They fine the company automatically","They ban the software"], a:1, e:"Courts evaluate duty of care by applying a reasonable person standard to see how an objective, careful person would act[cite: 1]."},
+
+        // MODULE 2 (30 Questions)
+        {m:2, q:"What is the primary consideration stated in the ACM Code of Ethics Preamble?", o:["Profit margins","The public good","Client satisfaction","Technological advancement"], a:1, e:"The public good is always the primary consideration in the ACM Code of Ethics[cite: 1]."},
+        {m:2, q:"Which ACM General Ethical Principle is 1.1?", o:["Avoid harm","Contribute to society and to human well-being","Respect privacy","Be honest and trustworthy"], a:1, e:"ACM 1.1: Contribute to society and to human well-being, acknowledging that all people are stakeholders[cite: 1]."},
+        {m:2, q:"ACM Principle 1.2 states that a computing professional should:", o:["Avoid harm","Respect privacy","Honor confidentiality","Be fair"], a:0, e:"ACM 1.2 is explicitly to 'Avoid harm'[cite: 1]."},
+        {m:2, q:"ACM Principle 1.4 requires professionals to:", o:["Respect privacy","Be fair and take action not to discriminate","Avoid harm","Strive for high quality"], a:1, e:"ACM 1.4: Be fair and take action not to discriminate[cite: 1]."},
+        {m:2, q:"Which ACM Principle is 'Respect the work required to produce new ideas, inventions, creative works'?", o:["1.2","1.3","1.5","1.7"], a:2, e:"ACM 1.5 pertains to respecting the work required to produce new ideas, inventions, creative works, and computing artifacts[cite: 1]."},
+        {m:2, q:"ACM Principle 1.6 requires computing professionals to:", o:["Honor confidentiality","Avoid harm","Respect privacy","Design secure systems"], a:2, e:"ACM 1.6: Respect privacy[cite: 1]."},
+        {m:2, q:"ACM Principle 2.2 asks professionals to maintain high standards of:", o:["Code compilation","Professional competence, conduct, and ethical practice","System uptime","Data encryption"], a:1, e:"ACM 2.2: Maintain high standards of professional competence, conduct, and ethical practice[cite: 1]."},
+        {m:2, q:"ACM Principle 2.6 states work should only be performed:", o:["If it pays well","In areas of competence","During office hours","When authorized by a manager"], a:1, e:"ACM 2.6: Perform work only in areas of competence[cite: 1]."},
+        {m:2, q:"ACM Principle 2.9 requires systems to be designed and implemented to be:", o:["Robustly and usably secure","As fast as possible","Open source","Profitable"], a:0, e:"ACM 2.9: Design and implement systems that are robustly and usably secure[cite: 1]."},
+        {m:2, q:"ACM Leadership Principle 3.1 states leaders should ensure that:", o:["Projects are on budget","The public good is the central concern during all professional work","Employees work overtime","The company wins awards"], a:1, e:"ACM 3.1: Ensure that the public good is the central concern during all professional computing work[cite: 1]."},
+        {m:2, q:"According to ACM Principle 3.3, leaders should manage personnel to:", o:["Enhance the quality of working life","Maximize output","Minimize costs","Prevent unions"], a:0, e:"ACM 3.3: Manage personnel and resources to enhance the quality of working life[cite: 1]."},
+        {m:2, q:"What does the AAP stand for?", o:["Association of Applied Programming","Analytics and AI Association of the Philippines","Asian AI Professionals","Advanced Analytics Platform"], a:1, e:"AAP stands for the Analytics and AI Association of the Philippines[cite: 1]."},
+        {m:2, q:"The AAP Code of Ethics is substantially aligned with which regional guide?", o:["EU GDPR","ASEAN Guide on AI Governance and Ethics","US AI Bill of Rights","WIPO AI Treaty"], a:1, e:"The AAP Code is substantially aligned with the guiding principles of the ASEAN Guide on AI Governance and Ethics[cite: 1]."},
+        {m:2, q:"Which is a Guiding Principle of the AAP Code of Ethics?", o:["Profit maximization","Human-centricity","Closed-source development","Data monopoly"], a:1, e:"Human-centricity is one of the guiding principles of the AAP Code of Ethics[cite: 1]."},
+        {m:2, q:"AAP General Ethical Principle 4 advises professionals to:", o:["Maximize AI efficiency","Strive for fairness and guard against discrimination","Avoid using personal data","Never use open-source algorithms"], a:1, e:"AAP General Principle 4: Strive for fairness and guard against discrimination[cite: 1]."},
+        {m:2, q:"AAP Professional Responsibility 9 requires AI systems to ensure:", o:["Privacy protection and security by design","Maximum data collection","Cloud-only deployment","Automated firing of employees"], a:0, e:"AAP Responsibility 9: Design AI systems that are securely engineered, ensuring privacy protection and security by design[cite: 1]."},
+        {m:2, q:"AAP Professional Responsibility 10 requires considering:", o:["Hardware costs","Environmental impact and sustainability","Stock prices","Competitor AI models"], a:1, e:"AAP Responsibility 10: Consider environmental impact and sustainability[cite: 1]."},
+        {m:2, q:"In what year was the first IEEE Code of Ethics adopted (by AIEE)?", o:["1890","1912","1950","1990"], a:1, e:"1912 - First Code Adopted by AIEE, after 6 years of effort[cite: 1]."},
+        {m:2, q:"When was the current baseline version comprising 10 principles of IEEE Code adopted?", o:["1974","1987","1990","2020"], a:2, e:"1990 - Current version comprises 10 principles[cite: 1]."},
+        {m:2, q:"Which of the following is an IEEE grade of membership?", o:["Beginner","Expert","Senior Member","Apprentice"], a:2, e:"IEEE Grades: Associate, Student, Member, Senior Member, Fellow, Honorary Member[cite: 1]."},
+        {m:2, q:"According to the 2024 IEEE Annual Report, roughly how many members does it have?", o:["100,000","250,000","486,616","1,000,000"], a:2, e:"The 2024 IEEE Annual Report reflects 486,616 Total Members[cite: 1]."},
+        {m:2, q:"When was the latest IEEE Code of Ethics adopted by the Board of Directors?", o:["1990","2005","June 2020","January 2024"], a:2, e:"Adopted by the IEEE Board of Directors June 2020[cite: 1]."},
+        {m:2, q:"IEEE 2020 Tenet I commits members to uphold the highest standards of:", o:["Coding efficiency","Integrity, responsible behavior, and ethical conduct","Mathematical accuracy","Hardware design"], a:1, e:"IEEE Tenet I: To uphold the highest standards of integrity, responsible behavior, and ethical conduct[cite: 1]."},
+        {m:2, q:"IEEE 2020 Tenet II states members must avoid:", o:["Open source software","Harassment or discrimination","Using legacy code","Working alone"], a:1, e:"IEEE Tenet II: To treat all persons fairly, to avoid harassment or discrimination, and to avoid injuring others[cite: 1]."},
+        {m:2, q:"IEEE 2020 Tenet III commits members to:", o:["Strive to ensure the code is upheld by colleagues and co-workers","Pay their dues on time","Publish 2 papers a year","Never work for the military"], a:0, e:"IEEE Tenet III: To strive to ensure this code is upheld by colleagues and co-workers[cite: 1]."},
+        {m:2, q:"How should ACM members treat violations of the Code (Principle 4.2)?", o:["Ignore them","Report them to the police","Treat them as inconsistent with membership in the ACM","Post them on social media"], a:2, e:"ACM 4.2: Treat violations of the Code as inconsistent with membership in the ACM[cite: 1]."},
+        {m:2, q:"AAP General Ethical Principle 6 requires AI professionals to:", o:["Collect all available data","Respect privacy and individual data rights","Store data indefinitely","Sell data securely"], a:1, e:"AAP Principle 6: Respect privacy and individual data rights[cite: 1]."},
+        {m:2, q:"According to AAP Professional Responsibility 7, professionals should support:", o:["Government censorship","Informed public understanding of AI","Unrestricted AI research","Replacing human workers"], a:1, e:"AAP Responsibility 7: Support informed public understanding of AI[cite: 1]."},
+        {m:2, q:"ACM Principle 3.6 advises leaders to use care when:", o:["Hiring new staff","Modifying or retiring systems","Buying hardware","Writing documentation"], a:1, e:"ACM 3.6: Use care when modifying or retiring systems[cite: 1]."},
+        {m:2, q:"ACM Principle 3.7 requires special care for systems that:", o:["Are very expensive","Become integrated into the infrastructure of society","Use obsolete languages","Are offline"], a:1, e:"ACM 3.7: Recognize and take special care of systems that become integrated into the infrastructure of society[cite: 1]."},
+
+        // MODULE 3 (30 Questions)
+        {m:3, q:"What does Intellectual Property (IP) refer to?", o:["Physical real estate","Creations of the human mind (inventions, literary works, symbols, etc.)","Open source code only","Public domain assets"], a:1, e:"IP refers to creations of the human mind, such as inventions, literary/artistic works, symbols, names, images, and designs[cite: 1]."},
+        {m:3, q:"What is a Copyright?", o:["Right to keep a secret","Exclusive right to distribute, display, perform, or reproduce an original work","Right to a brand name","Right to build a machine"], a:1, e:"A copyright is the exclusive right to distribute, display, perform, or reproduce an original work in copies[cite: 1]."},
+        {m:3, q:"What is Copyright Infringement?", o:["Copying a substantial part of copyrighted work without permission","Reading a book","Selling a used game","Citing a source"], a:0, e:"Infringement occurs when someone copies a substantial and material part of another's copyrighted work without permission[cite: 1]."},
+        {m:3, q:"What Philippine law outlines the protection of IP rights?", o:["PRO-IP Act","Republic Act No. 8293 (Intellectual Property Code)","DMCA","RA 10175"], a:1, e:"The Philippines has its own law called Intellectual Property Code of the Philippines (Republic Act No. 8293)[cite: 1]."},
+        {m:3, q:"What is IPOPHL?", o:["Internet Protocol Office","Intellectual Property Office of the Philippines","International Patent Office","Internet Piracy Organization"], a:1, e:"IPOPHL stands for Intellectual Property Office of the Philippines, the primary agency for IP laws[cite: 1]."},
+        {m:3, q:"What does Title II of the DMCA provide?", o:["Vessel Hull Design Protection","Safe harbor provisions for website operators avoiding infringement liability","Computer Maintenance exceptions","WIPO treaty implementation"], a:1, e:"Title II (Online Copyright Infringement Liability Limitation Act) enables website operators to avoid liability via 'safe harbor' provisions[cite: 1]."},
+        {m:3, q:"What is a Utility Patent?", o:["Issued for an ornamental design","Issued for a new and useful process, machine, or composition (up to 20 years)","A brand logo","A trade secret"], a:1, e:"A utility patent is issued for the invention of a new/useful process or machine, protecting it for up to 20 years[cite: 1]."},
+        {m:3, q:"What defines a Trade Secret?", o:["A registered patent","Business info needing effort/cost to develop, unique, and kept confidential","A published algorithm","A copyrighted movie"], a:1, e:"A trade secret is business info that required effort/cost to develop, has uniqueness, and is kept confidential[cite: 1]."},
+        {m:3, q:"What is Reverse Engineering?", o:["Writing code backwards","Taking something apart to understand, copy, or improve it","Hacking a server","Stealing a trade secret"], a:1, e:"Reverse engineering is the process of taking something apart to understand it, build a copy, or improve it[cite: 1]."},
+        {m:3, q:"What characterizes Open-Source Code?", o:["It costs thousands of dollars","Source code is made available for use or modification as developers see fit","It cannot be used for business","It is illegal in the US"], a:1, e:"Open-Source Code is a program whose source code is made available for use or modification, as developers see fit[cite: 1]."},
+        {m:3, q:"What is Cybersquatting?", o:["Hacking a website","Registering domain names of famous trademarks hoping to sell them for a large sum","Stealing wifi","Downloading illegal movies"], a:1, e:"Cybersquatting is registering domain names for famous trademarks with the hope the owner will buy it for a large sum[cite: 1]."},
+        {m:3, q:"Which US Amendment protects against unreasonable searches and seizures?", o:["First","Second","Fourth","Fifth"], a:2, e:"The Fourth Amendment protects people to be secure against unreasonable searches and seizures[cite: 1]."},
+        {m:3, q:"What is the Fair Credit Reporting Act (1970)?", o:["Regulates credit bureaus and how they collect/use credit info","Makes credit cards free","Forgives student loans","Prevents wiretapping"], a:0, e:"The Fair Credit Reporting Act regulates the operations of credit reporting bureaus[cite: 1]."},
+        {m:3, q:"What is the Gramm-Leach-Bliley Act (GLBA)?", o:["Healthcare law","Financial Services Modernization Act of 1999 handling financial privacy","Education privacy law","Cybercrime law"], a:1, e:"The GLBA (Financial Services Modernization Act) included rules like Financial Privacy, Safeguards, and Pretexting Rules[cite: 1]."},
+        {m:3, q:"What does HIPAA protect?", o:["Credit scores","Portability of health insurance and privacy of medical records","Student grades","Children's online privacy"], a:1, e:"HIPAA improves portability of health insurance and simplifies administration/privacy of health information[cite: 1]."},
+        {m:3, q:"What is FERPA?", o:["Federal Employee Retirement Act","A law assigning rights to parents regarding children's educational records","Financial reporting act","Foreign surveillance act"], a:1, e:"The Family Educational Rights and Privacy Act (FERPA) assigns rights to parents regarding their children's educational records[cite: 1]."},
+        {m:3, q:"Under COPPA, websites must get parental consent before collecting info from children under what age?", o:["10","13","16","18"], a:1, e:"COPPA requires comprehensive privacy policies and parental consent before collecting data from children under 13 years of age[cite: 1]."},
+        {m:3, q:"What is FISA?", o:["Federal Information Security Act","Foreign Intelligence Surveillance Act describing procedures for electronic surveillance","Financial Investment Statute Act","Freedom of Information act"], a:1, e:"The Foreign Intelligence Surveillance Act (FISA) describes procedures for electronic surveillance and collection of foreign intelligence[cite: 1]."},
+        {m:3, q:"What is the primary privacy law in the Philippines?", o:["RA 4200","RA 10175","Data Privacy Act of 2012 (RA 10173)","RA 8293"], a:2, e:"Data Privacy Act of 2012 (Republic Act No. 10173) protects personal information from unauthorized access, use, and disclosure[cite: 1]."},
+        {m:3, q:"What does the Anti-Wiretapping Law (RA 4200) in the Philippines prohibit?", o:["Using smartphones","Interception of private communication without the consent of all parties involved","Recording videos in public","Using VPNs"], a:1, e:"RA 4200 prohibits and penalizes wiretapping or the interception of any private communication without the consent of all parties involved[cite: 1]."},
+        {m:3, q:"Which Philippine law combats cybercrimes like illegal access and unauthorized interception?", o:["Human Security Act","Data Privacy Act","Cybercrime Prevention Act of 2012 (RA 10175)","E-Commerce Act"], a:2, e:"Cybercrime Prevention Act of 2012 (RA 10175) covers electronic surveillance in combating cybercrimes and illegal access to data[cite: 1]."},
+        {m:3, q:"What does the Philippine FOI Executive Order No. 2, s. 2016 allow?", o:["Free internet","Citizens to access information and records from government agencies","Free hardware","Tax exemptions"], a:1, e:"The FOI Executive Order allows Filipino citizens to access information and records from government agencies[cite: 1]."},
+        {m:3, q:"What is Competitive Intelligence?", o:["Industrial espionage","Legally obtained info gathered to help a company gain advantage over rivals","Stealing source code","Hacking competitors"], a:1, e:"Competitive intelligence is legally obtained information gathered to help a company gain an advantage over rivals[cite: 1]."},
+        {m:3, q:"What does the DMCA Title I implement?", o:["Vessel hulls","Safe harbors","WIPO Copyright and Performances and Phonograms Treaties","Patent law"], a:2, e:"Title I implements the WIPO treaties by making certain technical amendments to U.S. law[cite: 1]."},
+        {m:3, q:"What is a Design Patent?", o:["Protects how a machine works","Issued for a new, original, and ornamental design applied to an article of manufacture","Protects source code","Protects a brand name"], a:1, e:"A design patent is issued for a new, original, and ornamental design embodied in or applied to an article of manufacture[cite: 1]."},
+        {m:3, q:"What is Plagiarism?", o:["Using open source code","Act of stealing someone's ideas or words and passing them off as one's own","Reading an article","Collaborating on a project"], a:1, e:"Plagiarism is the act of stealing someone's ideas or words and passing them off as one's own[cite: 1]."},
+        {m:3, q:"How long is the term of a Utility Patent generally valid?", o:["5 years","10 years","Up to 20 years from application filing","Indefinitely"], a:2, e:"It generally permits the owner to exclude others for a period of up to 20 years from the date of patent application filing[cite: 1]."},
+        {m:3, q:"What is the GATT?", o:["Global Anti-Terror Taskforce","General Agreement on Tariffs and Trade","Government Association of Technology Transfer","Global Alliance for Trade Secrets"], a:1, e:"The General Agreement on Tariffs and Trade (GATT) was a multilateral agreement governing international trade[cite: 1]."},
+        {m:3, q:"Which UN agency is dedicated to stimulating innovation via intellectual property?", o:["UNESCO","WHO","WIPO (World Intellectual Property Organization)","WTO"], a:2, e:"WIPO, headquartered in Geneva, is an agency of the UN established to advocate for IP owners[cite: 1]."},
+        {m:3, q:"What is Information Privacy broadly defined as?", o:["Right to hide money","The right to be left alone—the most comprehensive of rights","Right to free speech","Right to bear arms"], a:1, e:"A broad definition of the right of privacy is 'the right to be left alone—the most comprehensive of rights'[cite: 1]."}
+    ];
+
+    let currentModule = 1;
+    let currentMode = 'flashcard'; // 'flashcard' or 'quiz'
+    let currentData = [];
+    let currentIndex = 0;
+    
+    // Quiz State
+    let quizScore = 0;
+    let quizAnswered = false;
+
+    // Elements
+    const fcQ = document.getElementById('fc-q');
+    const fcA = document.getElementById('fc-a');
+    const fcE = document.getElementById('fc-e');
+    const fcProgress = document.getElementById('fc-progress');
+    const flashcard = document.getElementById('flashcard');
+    
+    const qzQ = document.getElementById('qz-q');
+    const qzOptions = document.getElementById('qz-options');
+    const qzE = document.getElementById('qz-e');
+    const qzNextBtn = document.getElementById('qz-next');
+    const qzProgress = document.getElementById('qz-progress');
+    const qzScoreText = document.getElementById('qz-score');
+
+    function init() {
+        loadData();
+    }
+
+    function loadData() {
+        currentData = db.filter(item => item.m === currentModule);
+        currentIndex = 0;
+        quizScore = 0;
+        
+        if(currentMode === 'flashcard') {
+            document.getElementById('flashcard-view').classList.remove('hidden');
+            document.getElementById('quiz-view').classList.add('hidden');
+            document.getElementById('scoreboard-view').classList.add('hidden');
+            renderFlashcard();
+        } else {
+            document.getElementById('flashcard-view').classList.add('hidden');
+            document.getElementById('quiz-view').classList.remove('hidden');
+            document.getElementById('scoreboard-view').classList.add('hidden');
+            renderQuiz();
+        }
+    }
+
+    function selectModule(m) {
+        currentModule = m;
+        document.querySelectorAll('#module-tabs button').forEach((btn, i) => {
+            btn.classList.toggle('active', i + 1 === m);
+        });
+        loadData();
+    }
+
+    function selectMode(mode) {
+        currentMode = mode;
+        document.querySelectorAll('#mode-tabs button').forEach((btn) => {
+            btn.classList.toggle('active', btn.innerText.toLowerCase().includes(mode));
+        });
+        loadData();
+    }
+
+    // --- FLASHCARD LOGIC ---
+    function renderFlashcard() {
+        flashcard.classList.remove('flip');
+        const item = currentData[currentIndex];
+        fcQ.innerText = item.q;
+        fcA.innerText = item.o[item.a];
+        fcE.innerText = item.e;
+        fcProgress.innerText = `Card ${currentIndex + 1} / ${currentData.length}`;
+    }
+
+    function flipCard() {
+        flashcard.classList.toggle('flip');
+    }
+
+    function prevCard() {
+        if(currentIndex > 0) {
+            currentIndex--;
+            renderFlashcard();
+        }
+    }
+
+    function nextCard() {
+        if(currentIndex < currentData.length - 1) {
+            currentIndex++;
+            renderFlashcard();
+        }
+    }
+
+    // --- QUIZ LOGIC ---
+    function renderQuiz() {
+        if(currentIndex >= currentData.length) {
+            showScoreboard();
+            return;
+        }
+        
+        quizAnswered = false;
+        qzE.style.display = 'none';
+        qzNextBtn.classList.add('hidden');
+        
+        const item = currentData[currentIndex];
+        qzQ.innerText = item.q;
+        qzProgress.innerText = `Question ${currentIndex + 1} / ${currentData.length}`;
+        qzScoreText.innerText = `Score: ${quizScore} / ${currentData.length} | ${Math.round((quizScore/(currentData.length||1))*100)}%`;
+        
+        qzOptions.innerHTML = '';
+        item.o.forEach((opt, idx) => {
+            const btn = document.createElement('div');
+            btn.className = 'option';
+            btn.innerText = opt;
+            btn.onclick = () => selectQuizAnswer(idx, btn);
+            qzOptions.appendChild(btn);
+        });
+    }
+
+    function selectQuizAnswer(selectedIndex, btnElement) {
+        if(quizAnswered) return;
+        quizAnswered = true;
+        
+        const item = currentData[currentIndex];
+        const optionsDivs = qzOptions.children;
+        
+        for(let i=0; i<optionsDivs.length; i++) {
+            optionsDivs[i].classList.add('disabled');
+            if(i === item.a) {
+                optionsDivs[i].classList.add('correct');
+            }
+        }
+        
+        if(selectedIndex === item.a) {
+            quizScore++;
+        } else {
+            btnElement.classList.add('wrong');
+        }
+        
+        qzE.innerText = item.e;
+        qzE.style.display = 'block';
+        qzNextBtn.classList.remove('hidden');
+        qzScoreText.innerText = `Score: ${quizScore} / ${currentData.length} | ${Math.round((quizScore/(currentData.length||1))*100)}%`;
+    }
+
+    function nextQuiz() {
+        currentIndex++;
+        renderQuiz();
+    }
+
+    function showScoreboard() {
+        document.getElementById('quiz-view').classList.add('hidden');
+        document.getElementById('scoreboard-view').classList.remove('hidden');
+        
+        const percentage = Math.round((quizScore / currentData.length) * 100);
+        document.getElementById('sb-score').innerText = `${percentage}%`;
+        
+        let msg = "";
+        if(percentage >= 90) msg = "Outstanding Mastery!";
+        else if(percentage >= 75) msg = "Good Job!";
+        else msg = "Keep Reviewing!";
+        
+        document.getElementById('sb-text').innerText = `${quizScore} out of ${currentData.length} correct. ${msg}`;
+    }
+
+    function restartQuiz() {
+        currentIndex = 0;
+        quizScore = 0;
+        document.getElementById('scoreboard-view').classList.add('hidden');
+        document.getElementById('quiz-view').classList.remove('hidden');
+        renderQuiz();
+    }
+
+    // Initialize app
+    init();
+</script>
+</body>
+</html>
